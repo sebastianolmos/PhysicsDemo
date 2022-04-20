@@ -58,6 +58,15 @@ APhysicsDemoCharacter::APhysicsDemoCharacter()
 
 	GrabbedObjectLocation = CreateDefaultSubobject<USceneComponent>(TEXT("GrabbedObjectLocation"));
 	GrabbedObjectLocation->SetupAttachment(FP_Gun);
+
+	FCollisionResponseParams ResponseParams;
+	const FName ProfileName = "Magnetic";
+
+	if (UCollisionProfile::GetChannelAndResponseParams(ProfileName, MagneticCollisionChannel, ResponseParams))
+	{
+		bMagneticCollisionChannelFounded = true;
+		UE_LOG(LogTemp, Warning, TEXT("Magnetic Collsion Channel Succesfully founded"));
+	}
 }
 
 void APhysicsDemoCharacter::BeginPlay()
@@ -174,7 +183,15 @@ void APhysicsDemoCharacter::EndFire()
 			//const FVector ShotVelocity = FirstPersonCameraComponent->GetForwardVector() * ShotStrength;
 
 			GrabbedObject->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
-			GrabbedObject->SetSimulatePhysics(true);
+			
+			if (!GrabbedObject->GetOwner()->ActorHasTag("MagneticPole"))
+				GrabbedObject->SetSimulatePhysics(true);
+			else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Magnetic Collsion Channel Succesfully ungrabbed"));
+				GrabbedObject->SetConstraintMode(EDOFMode::Default);
+			}
+			
 			//GrabbedObject->AddImpulse(ShotVelocity, NAME_None, true);
 
 			SetGrabbedObject(nullptr);
@@ -191,7 +208,13 @@ void APhysicsDemoCharacter::OnLaunch()
 		const FVector ShotVelocity = FirstPersonCameraComponent->GetForwardVector() * ShotStrength;
 
 		GrabbedObject->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
-		GrabbedObject->SetSimulatePhysics(true);
+		if (!GrabbedObject->GetOwner()->ActorHasTag("MagneticPole"))
+			GrabbedObject->SetSimulatePhysics(true);
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Magnetic Collsion Channel Succesfully ungrabbed"));
+			GrabbedObject->SetConstraintMode(EDOFMode::Default);
+		}
 		GrabbedObject->AddImpulse(ShotVelocity, NAME_None, true);
 
 		SetGrabbedObject(nullptr);
@@ -199,7 +222,7 @@ void APhysicsDemoCharacter::OnLaunch()
 		// try and play the sound if specified
 		if (FireSound != nullptr)
 		{
-			UGameplayStatics::PlaySoundAtLocation(this, FireSound, GetActorLocation());
+			UGameplayStatics::PlaySoundAtLocation(this, FireSound, GetActorLocation(), 0.4);
 		}
 
 		// try and play a firing animation if specified
@@ -222,7 +245,17 @@ void APhysicsDemoCharacter::SetGrabbedObject(UPrimitiveComponent* ObjectToGrab)
 
 	if (GrabbedObject)
 	{
-		GrabbedObject->SetSimulatePhysics(false);
+		if (!ObjectToGrab->GetOwner()->ActorHasTag("MagneticPole"))
+			GrabbedObject->SetSimulatePhysics(false);
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Magnetic Collsion Channel Succesfully founded"));
+			GrabbedObject->SetConstraintMode(EDOFMode::None);
+		}
+
+		const float ObjectDist = FVector::Dist(ObjectToGrab->GetComponentLocation(),FirstPersonCameraComponent->GetComponentLocation());
+		GrabbedObjectLocation->SetWorldLocation(FirstPersonCameraComponent->GetComponentLocation() + FirstPersonCameraComponent->GetForwardVector() * ObjectDist);
+		
 		GrabbedObject->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
 		GrabbedObject->AttachToComponent(GrabbedObjectLocation, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
 	}

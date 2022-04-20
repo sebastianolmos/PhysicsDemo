@@ -41,6 +41,9 @@ class APhysicsDemoCharacter : public ACharacter
 
 	bool bGravityWeapon = false;
 
+	bool bMagneticCollisionChannelFounded = false;
+	ECollisionChannel MagneticCollisionChannel;
+
 public:
 	APhysicsDemoCharacter();
 
